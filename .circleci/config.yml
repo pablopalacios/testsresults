@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
       - checkout
@@ -23,7 +23,33 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest --cov=. --junitxml=./test-results/pytest/junit.xml --cov-report=xml
-            bash <(curl -s https://codecov.io/bash)
+            pytest --cov=. --cov-report=xml --junitxml=coverage/pytest/junit.xml
+            ls coverage/backend
       - store_test_results:
-          path: test-results
+          path: coverage
+      - persist_to_workspace:
+          root: coverage
+          paths:
+            - backend
+  upload_coverage:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: coverage
+      - run:
+          name: upload reports
+          command: |
+            ls
+            ls coverage
+            ls coverage/backend
+            bash <(wget -q -O - https://codecov.io/bash) -c -F backend -s coverage/backend
+workflows:
+  version: 2
+  workflow:
+    jobs:
+    - build
+    - upload_coverage:
+        requires:
+          - build
